@@ -25,6 +25,12 @@ CREATE TABLE IF NOT EXISTS password_reset_tokens (
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
+CREATE TABLE IF NOT EXISTS password_reset_limits (
+  key_hash VARCHAR(64) PRIMARY KEY,
+  window_start TIMESTAMPTZ NOT NULL,
+  attempts INTEGER NOT NULL
+);
+
 CREATE TABLE IF NOT EXISTS courses (
   id SERIAL PRIMARY KEY,
   title VARCHAR(255) NOT NULL,

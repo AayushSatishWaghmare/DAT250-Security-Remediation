@@ -1,6 +1,6 @@
 import hashlib
 import secrets
-from fastapi import Request
+from fastapi import HTTPException, Request
 from app.database import run_query
 
 
@@ -40,3 +40,12 @@ def get_user_from_session(request: Request):
 
 def clear_session(token: str):
     run_query("DELETE FROM sessions WHERE session_token = %s", (token,), commit=True)
+
+
+def require_admin(request: Request):
+    user = get_user_from_session(request)
+    if not user:
+        raise HTTPException(status_code=302, detail="Login required", headers={"Location": "/login"})
+    if user["role"] != "admin":
+        raise HTTPException(status_code=403, detail="Administrator access required")
+    return user

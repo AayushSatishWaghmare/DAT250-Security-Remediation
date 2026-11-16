@@ -109,3 +109,44 @@ Use:
 - Root cause explanation
 - Code/config fix for selected issues
 - Retest evidence
+
+## 10. Selected security remediations
+
+The `security-remediation` branch preserves the existing student grade-ownership
+check and adds plain-text course comments, parameterized course/user searches,
+administrator-only user management, and secure password-reset links.
+This is still an intentionally vulnerable, local-only lab, not a fully hardened app.
+
+### Updating an existing lab database
+
+Before using password reset with an existing database, apply the migration once.
+It preserves accounts and course data, but invalidates all existing reset links.
+From PowerShell in this project folder, with the database running:
+
+```powershell
+Get-Content -Raw .\db\migrations\001_password_reset_security.sql |
+  docker compose exec -T db psql -v ON_ERROR_STOP=1 -U dat250 -d dat250
+docker compose up --build -d
+```
+
+For macOS/Linux, use:
+
+```bash
+docker compose exec -T db psql -v ON_ERROR_STOP=1 -U dat250 -d dat250 < db/migrations/001_password_reset_security.sql
+docker compose up --build -d
+```
+
+Fresh databases already contain the new schema. No database reset or volume
+deletion is needed for an existing installation.
+
+### Security regression tests
+
+```powershell
+docker compose -p dat250-security-check -f compose.security-tests.yml up --build --abort-on-container-exit --exit-code-from tests
+docker compose -p dat250-security-check -f compose.security-tests.yml down --volumes
+```
+
+These commands use a separate, temporary PostgreSQL database with no published
+ports and do not touch the normal lab database. The test runner refuses to run
+against a database whose name does not end in `_security_tests`.
+See [the smoke-test checklist](docs/SMOKE_TEST.md) for security behavior and coverage.

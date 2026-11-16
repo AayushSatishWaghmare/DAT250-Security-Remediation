@@ -1,8 +1,8 @@
-from fastapi import APIRouter, Request, Form
+from fastapi import APIRouter, Depends, HTTPException, Request, Form
 from fastapi.responses import RedirectResponse, HTMLResponse
 from fastapi.templating import Jinja2Templates
-from app.database import run_query, get_conn
-from app.auth import get_user_from_session
+from app.database import run_query
+from app.auth import get_user_from_session, require_admin
 
 router = APIRouter()
 templates = Jinja2Templates(directory="app/templates")
@@ -30,22 +30,18 @@ def admin_home(request: Request):
 
 
 @router.get("/admin/users", response_class=HTMLResponse)
-def admin_users(request: Request):
-    user = get_user_from_session(request)
-    if not user:
-        return RedirectResponse("/login", status_code=302)
+def admin_users(request: Request, user: dict = Depends(require_admin)):
     users = run_query("SELECT id, email, full_name, role FROM users ORDER BY id", fetchall=True)
     return templates.TemplateResponse("admin_users.html", {"request": request, "user": user, "users": users})
 
 
 @router.post("/admin/users/{user_id}/role")
-def update_role(request: Request, user_id: int, role: str = Form(...)):
-    user = get_user_from_session(request)
-    if not user:
-        return RedirectResponse("/login", status_code=302)
-
-    if request.headers.get("x-role") in ["admin", "teacher"] or role in ["admin", "teacher", "ta", "student"]:
-        run_query("UPDATE users SET role=%s WHERE id=%s", (role, user_id), commit=True)
+def update_role(
+    request: Request, user_id: int, role: str = Form(...), user: dict = Depends(require_admin)
+):
+    if role not in ("admin", "teacher", "ta", "student"):
+        raise HTTPException(status_code=400, detail="Invalid role")
+    run_query("UPDATE users SET role=%s WHERE id=%s", (role, user_id), commit=True)
 
     return RedirectResponse("/admin/users", status_code=302)
 
@@ -92,20 +88,14 @@ def update_grade(
 
 
 @router.get("/admin/search-users", response_class=HTMLResponse)
-def search_users(request: Request, q: str = ""):
-    user = get_user_from_session(request)
-    if not user:
-        return RedirectResponse("/login", status_code=302)
-
-    sql = f"SELECT id, email, full_name, role FROM users WHERE email ILIKE '%{q}%' OR full_name ILIKE '%{q}%'"
-    conn = get_conn()
-    try:
-        with conn.cursor() as cur:
-            cur.execute(sql)
-            rows = cur.fetchall()
-            cols = [d[0] for d in cur.description]
-            users = [dict(zip(cols, r)) for r in rows]
-    finally:
-        conn.close()
+def search_users(request: Request, q: str = "", user: dict = Depends(require_admin)):
+    users = run_query(
+        """
+        SELECT id, email, full_name, role FROM users
+        WHERE email ILIKE %s OR full_name ILIKE %s ORDER BY id
+        """,
+        (f"%{q}%", f"%{q}%"),
+        fetchall=True,
+    )
 
     return templates.TemplateResponse("admin_users.html", {"request": request, "user": user, "users": users, "q": q})

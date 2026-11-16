@@ -1,0 +1,29 @@
+services:
+  db:
+    image: postgres@sha256:4e6e670bb069649261c9c18031f0aded7bb249a5b6664ddec29c013a89310d50
+    environment:
+      POSTGRES_DB: dat250_security_tests
+      POSTGRES_USER: security_tests
+      POSTGRES_PASSWORD: local-test-only
+    tmpfs:
+      - /var/lib/postgresql/data
+    volumes:
+      - ./db/init.sql:/docker-entrypoint-initdb.d/01-init.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U security_tests -d dat250_security_tests"]
+      interval: 1s
+      timeout: 5s
+      retries: 30
+
+  tests:
+    build: ./backend
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgresql://security_tests:local-test-only@db:5432/dat250_security_tests
+    volumes:
+      - ./backend/app:/app/app:ro
+      - ./backend/tests:/app/tests:ro
+      - ./db/migrations:/app/migrations:ro
+    command: ["python", "-m", "unittest", "discover", "-s", "tests", "-v"]
