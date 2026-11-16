@@ -16,7 +16,7 @@ Only test your own local lab environment.
 ## Mode A: Same machine
 
 App URL:
-`http://localhost:18181`
+`https://localhost:18443`
 
 MailHog:
 `http://localhost:8025`
@@ -39,16 +39,16 @@ For Windows PowerShell:
 
 3. From Kali:
    `ping <HOST-IP>`
-   `curl -I http://<HOST-IP>:18181`
+   `curl -k -I https://<HOST-IP>:18443`
 
 4. Open browser in Kali:
-   `http://<HOST-IP>:18181`
+   `https://<HOST-IP>:18443`
 
 Troubleshooting:
 - If NAT does not work, try bridged adapter or host-only adapter.
 - Check firewall settings.
 - Check Docker Desktop is running.
-- Check app is listening on `0.0.0.0:18181`.
+- Check app is listening on `0.0.0.0:18443`.
 
 ## Mode C: App in target VM, Kali in another VM
 
@@ -63,9 +63,9 @@ Steps:
    `ip -4 addr`
 4. From Kali:
    `ping <TARGET-VM-IP>`
-   `curl -I http://<TARGET-VM-IP>:18181`
+   `curl -k -I https://<TARGET-VM-IP>:18443`
 5. Open:
-   `http://<TARGET-VM-IP>:18181`
+   `https://<TARGET-VM-IP>:18443`
 
 ## Mode D: App inside Kali
 
@@ -73,11 +73,11 @@ Start app in Kali:
 `docker compose up --build`
 
 Open:
-`http://localhost:18181`
+`https://localhost:18443`
 
 ## Useful basic commands
 
-- `curl -I http://<TARGET-IP>:18181`
-- `nc -vz <TARGET-IP> 18181`
+- `curl -k -I https://<TARGET-IP>:18443`
+- `nc -vz <TARGET-IP> 18443`
 - `ip route`
 - `ip -4 addr`

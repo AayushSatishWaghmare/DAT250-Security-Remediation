@@ -14,7 +14,7 @@ docker compose up --build
 
 ## Port already in use
 
-Another local service may already use port 18181 or 8025.
+Another local service may already use port 18181, 18443 or 8025.
 
 ```bash
 docker compose down
@@ -32,9 +32,9 @@ Checklist:
 - Is the firewall blocking inbound connections?
 - Is the app reachable from the host first?
 - Try curl from the target machine:
-  `curl -I http://localhost:18181`
+  `curl -k -I https://localhost:18443`
 - Try curl from Kali:
-  `curl -I http://<TARGET-IP>:18181`
+  `curl -k -I https://<TARGET-IP>:18443`
 
 ## VirtualBox/VMware/UTM/Parallels notes
 

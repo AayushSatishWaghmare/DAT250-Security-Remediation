@@ -1,7 +1,15 @@
 from fastapi import APIRouter, Request, Form
 from fastapi.responses import RedirectResponse, HTMLResponse
 from fastapi.templating import Jinja2Templates
-from app.auth import hash_password, verify_password, create_session, clear_session, get_user_from_session
+from app.auth import (
+    clear_session,
+    create_session,
+    dummy_verify,
+    get_user_from_session,
+    hash_password,
+    needs_rehash,
+    verify_password,
+)
 from app.database import run_query
 from app.email_service import send_reset_email
 from app.password_reset import (
@@ -47,17 +55,21 @@ def login_page(request: Request):
 def login(request: Request, email: str = Form(...), password: str = Form(...)):
     user = run_query("SELECT * FROM users WHERE email=%s", (email,), fetchone=True)
     if not user:
+        dummy_verify(password)
+    if not user or not verify_password(password, user["password_hash"]):
         return templates.TemplateResponse(
-            "login.html", {"request": request, "error": "No account found with that email."}
+            "login.html", {"request": request, "error": "Wrong email or password."}
         )
-    if not verify_password(password, user["password_hash"]):
-        return templates.TemplateResponse(
-            "login.html", {"request": request, "error": "Invalid password for this account."}
+    if needs_rehash(user["password_hash"]):
+        run_query(
+            "UPDATE users SET password_hash=%s WHERE id=%s",
+            (hash_password(password), user["id"]),
+            commit=True,
         )
 
     token = create_session(user["id"])
     resp = RedirectResponse("/dashboard", status_code=302)
-    resp.set_cookie("session_token", token)
+    resp.set_cookie("session_token", token, secure=True, httponly=True, samesite="lax")
     return resp
 
 
@@ -90,7 +102,7 @@ def logout(request: Request):
     if token:
         clear_session(token)
     resp = RedirectResponse("/", status_code=302)
-    resp.delete_cookie("session_token")
+    resp.delete_cookie("session_token", secure=True, httponly=True, samesite="lax")
     return resp
 
 

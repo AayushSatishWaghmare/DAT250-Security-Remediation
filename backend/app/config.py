@@ -9,4 +9,4 @@ DATABASE_URL = os.getenv("DATABASE_URL", "postgresql://dat250:dat250@db:5432/dat
 SESSION_SECRET = os.getenv("SESSION_SECRET", "hardcoded-dev-secret")
 MAILHOG_HOST = os.getenv("MAILHOG_HOST", "mailhog")
 MAILHOG_PORT = int(os.getenv("MAILHOG_PORT", "1025"))
-BASE_URL = os.getenv("BASE_URL", "http://localhost:18181")
+BASE_URL = os.getenv("BASE_URL", "https://localhost:18443")

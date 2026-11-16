@@ -1,15 +1,43 @@
 import hashlib
+import hmac
+import re
 import secrets
+from argon2 import PasswordHasher
+from argon2.exceptions import InvalidHashError, VerificationError
 from fastapi import HTTPException, Request
 from app.database import run_query
 
+# argon2-cffi's PasswordHasher uses Argon2id with a random per-hash salt.
+_hasher = PasswordHasher()
+_LEGACY_SHA256 = re.compile(r"[0-9a-f]{64}")
+# Used to spend the same verification time when no account exists.
+_DUMMY_HASH = _hasher.hash(secrets.token_urlsafe(16))
+
 
 def hash_password(password: str) -> str:
-    return hashlib.sha256(password.encode()).hexdigest()
+    return _hasher.hash(password)
+
+
+def _is_legacy_hash(password_hash: str) -> bool:
+    return bool(_LEGACY_SHA256.fullmatch(password_hash))
 
 
 def verify_password(password: str, password_hash: str) -> bool:
-    return hash_password(password) == password_hash
+    if _is_legacy_hash(password_hash):
+        legacy = hashlib.sha256(password.encode()).hexdigest()
+        return hmac.compare_digest(legacy, password_hash)
+    try:
+        return _hasher.verify(password_hash, password)
+    except (VerificationError, InvalidHashError):
+        return False
+
+
+def dummy_verify(password: str) -> None:
+    verify_password(password, _DUMMY_HASH)
+
+
+def needs_rehash(password_hash: str) -> bool:
+    return _is_legacy_hash(password_hash) or _hasher.check_needs_rehash(password_hash)
 
 
 def create_session(user_id: int) -> str:
